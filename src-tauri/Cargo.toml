@@ -1,6 +1,6 @@
 [package]
 name = "md-read"
-version = "0.1.0"
+version = "0.2.0"
 description = "A lightweight, cross-platform Markdown viewer/editor"
 authors = ["VirtualExponent"]
 license = "MIT"
