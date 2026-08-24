@@ -16,22 +16,31 @@ scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 
 ## Install
 
+Every [release](https://github.com/KajiMaster/markdown-reader/releases) has installers for
+Linux, Windows, and macOS. **Windows and macOS builds are unsigned** (no paid code-signing
+certificate) — expect a first-run SmartScreen ("More info" → "Run anyway") or Gatekeeper
+("Open Anyway" in System Settings → Privacy & Security) warning. That's expected for an
+unsigned open-source build, not a sign anything's wrong.
+
 **Linux (x86_64):**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/KajiMaster/markdown-reader/main/install.sh | sh
 ```
 
-Installs to `~/.local/bin/md-read` with a desktop entry, no root required.
+Installs to `~/.local/bin/md-read` with a desktop entry, no root required. Native `.deb`
+and `.rpm` packages, plus a standalone `.AppImage`, are also attached to every release.
 
 **Arch Linux:** an AUR package (`md-read-bin`) is provided in [`aur/`](aur/) — see
 [`aur/README.md`](aur/README.md) for publishing it, or build it locally with `makepkg -si`.
 
-**From source:** see [Development](#development) below. `.deb` and `.AppImage` bundles are
-also attached to every [release](https://github.com/KajiMaster/markdown-reader/releases).
+**Windows 11:** download and run the `.msi` or `.exe` (NSIS) installer from the latest
+release.
 
-macOS and Windows aren't packaged yet — `npm run tauri build` works if you want to build
-your own bundle, but it's untested there. Contributions welcome.
+**macOS:** download the `.dmg` from the latest release, drag `md-read` into Applications.
+The build is a universal binary (Intel + Apple Silicon).
+
+**From source:** see [Development](#development) below.
 
 ## Development
 

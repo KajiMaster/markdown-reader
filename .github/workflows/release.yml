@@ -9,7 +9,18 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
@@ -19,12 +30,15 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
 
       - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -38,18 +52,20 @@ jobs:
 
       - run: npm ci
 
-      - name: Build and publish Tauri bundles (AppImage, .deb)
+      - name: Build and publish Tauri bundles
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "md-read ${{ github.ref_name }}"
-          releaseBody: "See the commit history for what changed in this release."
+          releaseBody: "See the commit history for what changed in this release. Windows and macOS builds are unsigned (no code-signing certificate) — expect a first-run SmartScreen/Gatekeeper warning."
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
 
       - name: Package raw binary tarball (for AUR / install.sh)
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
@@ -71,6 +87,7 @@ jobs:
           tar czf "${STAGE}.tar.gz" "$STAGE"
 
       - name: Upload tarball to release
+        if: matrix.platform == 'ubuntu-22.04'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
