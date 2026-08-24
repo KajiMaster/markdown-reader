@@ -1,14 +1,25 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+/// Returns the path passed on the command line (`md-read /path/file.md`), if any.
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn get_argv() -> Option<String> {
+    std::env::args().nth(1)
+}
+
+#[tauri::command]
+fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn write_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(path, content).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![get_argv, read_file, write_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
