@@ -1,0 +1,20 @@
+# Maintainer: VirtualExponent <noreply@virtualexponent.com>
+pkgname=md-read-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A lightweight, cross-platform Markdown viewer/editor"
+arch=('x86_64')
+url="https://github.com/KajiMaster/markdown-reader"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator')
+provides=('md-read')
+conflicts=('md-read')
+source=("https://github.com/KajiMaster/markdown-reader/releases/download/v${pkgver}/md-read-${pkgver}-x86_64.tar.gz")
+sha256sums=('REPLACE_WITH_updpkgsums_OUTPUT')
+
+package() {
+  cd "${srcdir}/md-read-${pkgver}-x86_64"
+  install -Dm755 md-read "${pkgdir}/usr/bin/md-read"
+  install -Dm644 md-read.png "${pkgdir}/usr/share/icons/hicolor/128x128/apps/md-read.png"
+  install -Dm644 md-read.desktop "${pkgdir}/usr/share/applications/md-read.desktop"
+}
