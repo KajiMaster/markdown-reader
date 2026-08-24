@@ -14,7 +14,9 @@ const htmlProcessor = unified()
   .use(remarkRehype)
   .use(rehypeStringify);
 
-const stringifyProcessor = unified().use(remarkStringify).use(remarkGfm);
+const stringifyProcessor = unified()
+  .use(remarkStringify, { bullet: "-" })
+  .use(remarkGfm);
 
 export function parse(md: string): Root {
   return parseProcessor.parse(md) as Root;
