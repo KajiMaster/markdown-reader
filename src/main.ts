@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog, confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import { dirname } from "@tauri-apps/api/path";
 import { Crepe } from "@milkdown/crepe";
 import "@milkdown/crepe/theme/common/style.css";
@@ -7,12 +7,14 @@ import "@milkdown/crepe/theme/classic.css";
 
 let currentPath: string | null = null;
 let crepe: Crepe | null = null;
+let dirty = false;
 
 async function saveTo(path: string): Promise<void> {
   if (!crepe) return;
   const content = crepe.getMarkdown();
   await invoke("write_file", { path, content });
   currentPath = path;
+  dirty = false;
 }
 
 async function save(): Promise<void> {
@@ -38,11 +40,24 @@ async function loadDocument(content: string, path: string | null): Promise<void>
     await crepe.destroy();
   }
   crepe = new Crepe({ root: "#editor", defaultValue: content });
+  crepe.on((listener) => {
+    listener.markdownUpdated(() => {
+      dirty = true;
+    });
+  });
   await crepe.create();
   currentPath = path;
+  dirty = false;
 }
 
 async function openFile(): Promise<void> {
+  if (dirty) {
+    const proceed = await confirmDialog(
+      "You have unsaved changes. Discard them and open a different file?",
+      { title: "Unsaved changes", kind: "warning" },
+    );
+    if (!proceed) return;
+  }
   const defaultPath = currentPath ? await dirname(currentPath) : undefined;
   const path = await openDialog({
     defaultPath,
