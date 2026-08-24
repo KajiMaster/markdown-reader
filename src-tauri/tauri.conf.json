@@ -15,7 +15,8 @@
       {
         "title": "md-read",
         "width": 900,
-        "height": 1000
+        "height": 1000,
+        "maximized": true
       }
     ],
     "security": {
