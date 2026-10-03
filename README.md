@@ -14,6 +14,22 @@ no menus beyond a single toolbar, no vault, no sync, no plugins.
 Supports CommonMark + GFM: tables, task lists, strikethrough, autolinks, footnotes. Not in
 scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 
+## Keys
+
+| Key | Does |
+|---|---|
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Save / save as |
+| <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open another file |
+| <kbd>Ctrl</kbd>+Click a link | Follow it: web links open in your browser, `#heading` links scroll, relative `.md` links open in the same window |
+| <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd> | Zoom in / out / reset |
+| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Print |
+
+A plain click on a link only places the cursor, so link text stays editable. On macOS use
+<kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
+
+Saving always writes Markdown through the same tested pipeline the app renders with
+(`src/md.ts`), so a save never quietly changes `-` bullets to `*` or reformats tables.
+
 ## Install
 
 Every [release](https://github.com/KajiMaster/markdown-reader/releases) has installers for

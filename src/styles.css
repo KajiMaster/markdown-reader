@@ -41,3 +41,12 @@ body {
     overflow: visible;
   }
 }
+
+/* Hint that Ctrl/Cmd+Click follows links. */
+#editor a[href] {
+  cursor: text;
+}
+
+body.follow-links #editor a[href] {
+  cursor: pointer;
+}
