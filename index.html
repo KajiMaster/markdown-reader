@@ -9,6 +9,21 @@
   </head>
 
   <body>
-    <div id="editor"></div>
+    <div id="app">
+      <div id="editor"></div>
+      <aside id="comments" hidden>
+        <header>
+          <span>Comments</span>
+          <button class="comments-copy" title="Save, then copy an instruction for Claude Code">Copy prompt for Claude</button>
+          <button class="comments-close" title="Hide (Ctrl+Shift+M)" aria-label="Hide comments">×</button>
+        </header>
+        <div class="comments-list"></div>
+      </aside>
+    </div>
+    <div id="comment-box" hidden>
+      <textarea rows="3" placeholder="Ask Claude about the selected blocks…"></textarea>
+      <small>Enter to add · Shift+Enter for a new line · Esc to cancel</small>
+    </div>
+    <div id="status" hidden><span></span></div>
   </body>
 </html>

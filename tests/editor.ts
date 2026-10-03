@@ -5,6 +5,7 @@ import { commonmark } from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { getMarkdown } from "@milkdown/kit/utils";
 import type { EditorView } from "@milkdown/kit/prose/view";
+import { commentChipView, commentHighlight } from "../src/comments-editor";
 
 export interface TestEditor {
   view: EditorView;
@@ -23,6 +24,7 @@ export async function makeEditor(md: string): Promise<TestEditor> {
     })
     .use(commonmark)
     .use(gfm)
+    .use([commentChipView, commentHighlight])
     .create();
   return {
     view: editor.action((ctx) => ctx.get(editorViewCtx)),

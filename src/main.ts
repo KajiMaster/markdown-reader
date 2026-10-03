@@ -3,39 +3,51 @@ import { open as openDialog, save as saveDialog, confirm as confirmDialog } from
 import { dirname } from "@tauri-apps/api/path";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Crepe } from "@milkdown/crepe";
+import { editorViewCtx } from "@milkdown/kit/core";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/classic.css";
 import { normalizeForSave } from "./md";
 import { classifyHref, headingSlugs, htmlAnchorId } from "./links";
+import { commentChipView, commentHighlight } from "./comments-editor";
+import { initComments, openBox, refreshComments, togglePanel } from "./comments-ui";
 
 let currentPath: string | null = null;
 let crepe: Crepe | null = null;
 let dirty = false;
+// What the file on disk held when we last read or wrote it; a difference means someone else
+// (e.g. Claude Code answering comments) changed it.
+let diskContent: string | null = null;
+// Editor markdown as of the last load/save. Crepe emits an update right after loading, so
+// "dirty" means "differs from this", not "an update event fired".
+let cleanMarkdown = "";
 
 async function saveTo(path: string): Promise<void> {
   if (!crepe) return;
   const content = normalizeForSave(crepe.getMarkdown());
   await invoke("write_file", { path, content });
   currentPath = path;
+  diskContent = content;
+  cleanMarkdown = crepe.getMarkdown();
   dirty = false;
 }
 
-async function save(): Promise<void> {
+/** Saves to the current path (asking for one if needed). Resolves false if cancelled. */
+async function save(): Promise<boolean> {
   if (currentPath) {
     await saveTo(currentPath);
-  } else {
-    await saveAs();
+    return true;
   }
+  return saveAs();
 }
 
-async function saveAs(): Promise<void> {
+async function saveAs(): Promise<boolean> {
   const path = await saveDialog({
     defaultPath: currentPath ?? undefined,
     filters: [{ name: "Markdown", extensions: ["md"] }],
   });
-  if (path) {
-    await saveTo(path);
-  }
+  if (!path) return false;
+  await saveTo(path);
+  return true;
 }
 
 async function loadDocument(content: string, path: string | null): Promise<void> {
@@ -43,14 +55,83 @@ async function loadDocument(content: string, path: string | null): Promise<void>
     await crepe.destroy();
   }
   crepe = new Crepe({ root: "#editor", defaultValue: content });
+  crepe.editor.use([commentChipView, commentHighlight]);
   crepe.on((listener) => {
-    listener.markdownUpdated(() => {
-      dirty = true;
+    listener.markdownUpdated((_ctx, markdown) => {
+      dirty = markdown !== cleanMarkdown;
+      refreshComments();
     });
   });
   await crepe.create();
+  cleanMarkdown = crepe.getMarkdown();
   currentPath = path;
+  diskContent = path ? content : null;
   dirty = false;
+  hideStatus();
+  refreshComments();
+}
+
+function editorView() {
+  return crepe?.editor.action((ctx) => ctx.get(editorViewCtx)) ?? null;
+}
+
+const statusBar = document.querySelector<HTMLElement>("#status")!;
+let statusTimer: number | undefined;
+
+/** One-line status at the bottom. With actions it stays until one is chosen. */
+function showStatus(message: string, actions: Array<[string, () => void]> = []): void {
+  window.clearTimeout(statusTimer);
+  const buttons = actions.map(([label, run]) => {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      hideStatus();
+      run();
+    });
+    return button;
+  });
+  const text = document.createElement("span");
+  text.textContent = message;
+  statusBar.replaceChildren(text, ...buttons);
+  statusBar.hidden = false;
+  if (!actions.length) statusTimer = window.setTimeout(hideStatus, 5000);
+}
+
+function hideStatus(): void {
+  statusBar.hidden = true;
+}
+
+async function reloadFromDisk(content: string): Promise<void> {
+  const scroller = document.querySelector("#editor")!;
+  const top = scroller.scrollTop;
+  await loadDocument(content, currentPath);
+  scroller.scrollTop = top;
+}
+
+// Poll the open file so edits made elsewhere (Claude Code resolving comments) show up live.
+// Unsaved local edits are never overwritten without asking.
+let checkingDisk = false;
+async function checkDisk(): Promise<void> {
+  if (!currentPath || diskContent === null || checkingDisk) return;
+  checkingDisk = true;
+  try {
+    const content = await invoke<string>("read_file", { path: currentPath });
+    if (content === diskContent) return;
+    if (!dirty) {
+      await reloadFromDisk(content);
+      showStatus("Reloaded — the file changed on disk.");
+    } else {
+      diskContent = content;
+      showStatus("The file changed on disk, and you have unsaved edits.", [
+        ["Load theirs", () => void reloadFromDisk(content)],
+        ["Keep mine", () => {}],
+      ]);
+    }
+  } catch {
+    // Missing or unreadable for a moment (e.g. mid-write); try again on the next tick.
+  } finally {
+    checkingDisk = false;
+  }
 }
 
 async function confirmDiscard(): Promise<boolean> {
@@ -175,6 +256,12 @@ window.addEventListener("keydown", (event) => {
     } else {
       void save();
     }
+  } else if (event.code === "KeyM" && event.altKey) {
+    event.preventDefault();
+    openBox();
+  } else if (event.code === "KeyM" && event.shiftKey) {
+    event.preventDefault();
+    togglePanel();
   } else if (key.toLowerCase() === "o") {
     event.preventDefault();
     void openFile();
@@ -195,6 +282,14 @@ window.addEventListener("keydown", (event) => {
 
 async function bootstrap(): Promise<void> {
   initZoom();
+  initComments({
+    view: editorView,
+    markdown: () => crepe?.getMarkdown() ?? "",
+    path: () => currentPath,
+    save,
+    status: (message) => showStatus(message),
+  });
+  window.setInterval(() => void checkDisk(), 1500);
   const argvPath = await invoke<string | null>("get_argv");
   let content = "";
   if (argvPath) {

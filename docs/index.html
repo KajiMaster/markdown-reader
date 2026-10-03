@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>md-read</title>
+<meta name="description" content="A small, fast Markdown viewer and editor. Open a file, read it rendered, fix it in place, and leave @claude comments that Claude Code answers in the file.">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #fbfaf7;
+  --ink: #1f1f1d;
+  --soft: #5c5b57;
+  --rule: #e4e1da;
+  --accent: #9a6416;
+  --mark: rgba(214, 160, 52, 0.16);
+  --code-bg: #f2efe8;
+  --shot-border: #dcd8cf;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #181816;
+    --ink: #ebe8e1;
+    --soft: #a6a39b;
+    --rule: #34322e;
+    --accent: #e0aa4a;
+    --mark: rgba(224, 170, 74, 0.14);
+    --code-bg: #24231f;
+    --shot-border: #3a3833;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #181816;
+  --ink: #ebe8e1;
+  --soft: #a6a39b;
+  --rule: #34322e;
+  --accent: #e0aa4a;
+  --mark: rgba(224, 170, 74, 0.14);
+  --code-bg: #24231f;
+  --shot-border: #3a3833;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.6 "IBM Plex Sans", system-ui, sans-serif;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.wide { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+nav {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+}
+nav .name {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  margin-right: auto;
+}
+nav a:not(.name) { color: var(--soft); text-decoration: none; }
+nav a:not(.name):hover { color: var(--ink); }
+
+h1, h2 {
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+h1 { font-size: clamp(36px, 6vw, 56px); margin: 72px 0 20px; }
+h2 { font-size: 30px; margin: 72px 0 12px; }
+.lede { font-size: 20px; color: var(--soft); margin: 0 0 32px; max-width: 34em; }
+
+.get { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 12px; }
+.button {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 11px 20px;
+  border-radius: 3px;
+}
+.button:hover { background: var(--accent); color: #fff; }
+.meta { font-size: 14px; color: var(--soft); }
+
+pre, code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+pre {
+  background: var(--code-bg);
+  padding: 14px 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+pre code { background: none; padding: 0; }
+.c { color: var(--accent); }
+
+figure { margin: 56px 0 0; }
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--shot-border);
+  border-radius: 4px;
+}
+figcaption { font-size: 14px; color: var(--soft); margin-top: 10px; }
+
+.steps { counter-reset: step; list-style: none; padding: 0; margin: 24px 0; }
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 18px 44px;
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--accent);
+}
+.note { background: var(--mark); padding: 14px 18px; border-left: 3px solid var(--accent); }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; }
+kbd {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.cols ul { padding-left: 20px; margin: 8px 0; }
+.cols h3 { font-size: 16px; margin: 20px 0 0; }
+
+footer {
+  margin: 96px 0 0;
+  padding: 24px 0 40px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  color: var(--soft);
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  h1 { margin-top: 48px; }
+  h2 { margin-top: 56px; }
+  .cols { grid-template-columns: 1fr; }
+  nav { gap: 16px; }
+  th, td { padding-right: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="name" href="./">md-read</a>
+    <a href="#claude">Comments</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/KajiMaster/markdown-reader">GitHub</a>
+  </nav>
+
+  <h1>Open a Markdown file. Read it. Fix it where it is.</h1>
+  <p class="lede">md-read shows a Markdown file the way it's meant to look, lets you edit the rendered page directly, and saves plain Markdown back to the same file. No vault, no account, no sync.</p>
+
+  <div class="get">
+    <a class="button" href="https://github.com/KajiMaster/markdown-reader/releases/latest">Download v0.6.0</a>
+    <span class="meta">Linux, Windows, macOS. Free and MIT licensed.</span>
+  </div>
+</div>
+
+<div class="wide">
+  <figure>
+    <img src="screenshot.png" width="2560" height="1520" alt="md-read showing a launch checklist. Two paragraphs are highlighted under a comment asking Claude to merge them, and the side panel shows Claude's reply.">
+    <figcaption>A document with an open @claude comment. The highlighted blocks are what the comment is about; Claude's reply is in the panel.</figcaption>
+  </figure>
+</div>
+
+<div class="wrap">
+  <h2>From the terminal</h2>
+  <pre><code>md-read notes.md &amp;</code></pre>
+  <p>The window opens on the rendered document. Click anywhere and type. <kbd>Ctrl</kbd>+<kbd>S</kbd> writes it back as Markdown through the same pipeline that renders it, so your <code>-</code> bullets, tables and footnotes come back the way you wrote them.</p>
+  <p>It covers CommonMark and GitHub-flavored Markdown: tables, task lists, strikethrough, autolinks and footnotes. <kbd>Ctrl</kbd>+Click follows links, including <code>#heading</code> jumps and relative <code>.md</code> files.</p>
+
+  <h2 id="claude">Leave a note for Claude</h2>
+  <p>Select the paragraphs you want help with, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>, and write what you want. The comment is saved inside the file, around the text it's about:</p>
+<pre><code><span class="c">&lt;!-- @claude c1: merge these two paragraphs --&gt;</span>
+
+We will ship to the first 40 testers on Thursday morning.
+
+Testers get the build Thursday, so it must be green before then.
+
+<span class="c">&lt;!-- /@claude c1 --&gt;</span></code></pre>
+  <p>They're ordinary HTML comments, so GitHub and every other Markdown viewer hide them. The file stays readable everywhere else.</p>
+
+  <ol class="steps">
+    <li><strong>Comment</strong> on any block or group of blocks. Each comment gets a chip in the page and a thread in the side panel.</li>
+    <li><strong>Copy prompt for Claude</strong> saves the file and copies a short instruction. Paste it into Claude Code.</li>
+    <li><strong>Watch it land.</strong> Claude edits the marked text, then removes the markers or replies in the thread. md-read reloads the file as soon as it changes, and asks first if you have unsaved edits.</li>
+  </ol>
+
+  <p class="note">md-read never talks to an AI service itself. There's no API key and nothing leaves your machine. The comments are text in your file, and you choose what reads them.</p>
+
+  <h2>Keys</h2>
+  <table>
+    <tr><th>Key</th><th>Does</th></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save. Add <kbd>Shift</kbd> to save as.</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Open another file</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+Click</td><td>Follow a link</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd></td><td>Comment on the selection</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd></td><td>Show or hide comments</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd> <kbd>-</kbd> <kbd>0</kbd></td><td>Zoom in, out, reset</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Print (comments are left out)</td></tr>
+  </table>
+  <p class="meta">On macOS, use <kbd>Cmd</kbd> for <kbd>Ctrl</kbd>.</p>
+
+  <h2 id="install">Install</h2>
+  <p><strong>Linux</strong>, no root needed:</p>
+  <pre><code>curl -fsSL https://raw.githubusercontent.com/KajiMaster/markdown-reader/main/install.sh | sh</code></pre>
+  <p>Each <a href="https://github.com/KajiMaster/markdown-reader/releases/latest">release</a> also has <code>.deb</code>, <code>.rpm</code> and <code>.AppImage</code> builds, a <code>.msi</code> and <code>.exe</code> for Windows, and a universal <code>.dmg</code> for macOS. Arch users can build the AUR package in <a href="https://github.com/KajiMaster/markdown-reader/tree/main/aur"><code>aur/</code></a>.</p>
+  <p class="meta">The Windows and macOS builds aren't code-signed, so the first launch shows a SmartScreen or Gatekeeper warning. Choose "Run anyway" or "Open Anyway".</p>
+
+  <h2>What it isn't</h2>
+  <div class="cols">
+    <div>
+      <h3>In</h3>
+      <ul>
+        <li>One file, one window</li>
+        <li>CommonMark and GFM</li>
+        <li>Editing the rendered page</li>
+        <li>@claude comments in the file</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Out, on purpose</h3>
+      <ul>
+        <li>Vaults, wikilinks, callouts</li>
+        <li>Math, Mermaid, front matter</li>
+        <li>Plugins, accounts, sync</li>
+        <li>Built-in AI calls</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    md-read v0.6.0 · <a href="https://github.com/KajiMaster/markdown-reader/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/KajiMaster/markdown-reader">Source</a> · MIT · Made by <a href="https://virtualexponent.com">VirtualExponent</a>
+  </footer>
+</div>
+</body>
+</html>

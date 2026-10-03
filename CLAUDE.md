@@ -7,6 +7,10 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 - `md-read /path/file.md &` opens a window showing the RENDERED document (no raw tags).
 - The rendered view is editable in place; Ctrl+S saves back to the same path, Ctrl+Shift+S = save-as.
 - Minimal, fast, no menus beyond what a single toolbar needs. No plugins, no vault, no sync.
+- @claude comments (v0.6): stored IN the .md as `<!-- @claude ID: … -->` … `<!-- /@claude ID -->`
+  HTML comments, rendered as chips + a side panel, never as raw tags. The app never calls an AI
+  service; Claude Code edits the file and the app reloads it (polls the open file every 1.5 s,
+  asks before overwriting unsaved edits).
 - v1 markdown scope: CommonMark + GFM (tables, task lists, strikethrough, autolinks, footnotes).
   NOT in scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 
@@ -17,6 +21,10 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
   Every save writes `normalizeForSave(editor markdown)`, never Milkdown's raw output.
 - `src/links.ts` — pure link resolution (href classification, relative paths, heading slugs).
   Ctrl/Cmd+Click follows a link; plain click edits.
+- `src/comments.ts` — pure marker syntax (parse/serialize, list, Claude prompt).
+  `src/comments-editor.ts` — ProseMirror ops (add/reply/resolve), chip view, range highlight.
+  `src/comments-ui.ts` — side panel and new-comment box (DOM only).
+- `docs/` — the static website (GitHub Pages, served from `main` → `/docs`).
 - `src-tauri/src/lib.rs` — commands: `get_argv`, `read_file`, `write_file`. Nothing else.
 - `tests/` — vitest. `tests/fixtures/all-constructs.md` is the canonical coverage file.
   `tests/editor.ts` runs real Milkdown headless (jsdom) so the editor → save path is tested.
@@ -29,7 +37,7 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 
 ## Releasing
 Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
-(plus the lockfiles), add a `CHANGELOG.md` entry, merge to `main`, then push a `vX.Y.Z` tag.
+(plus the lockfiles), add a `CHANGELOG.md` entry, update the version shown in `docs/index.html`, merge to `main`, then push a `vX.Y.Z` tag.
 `.github/workflows/release.yml` builds and publishes the installers. Update `aur/PKGBUILD`
 (`pkgver`, checksum) after the release assets exist.
 
