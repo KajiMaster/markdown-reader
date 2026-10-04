@@ -29,3 +29,9 @@ export function toHtml(md: string): string {
 export function toMarkdown(tree: Root): string {
   return stringifyProcessor.stringify(tree) as string;
 }
+
+// Every save goes through this, so the file on disk is what the tested pipeline produces,
+// not whatever Milkdown's internal serializer emits (e.g. `*` bullets, `| - |` table rules).
+export function normalizeForSave(md: string): string {
+  return toMarkdown(parse(md));
+}

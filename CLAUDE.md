@@ -14,14 +14,24 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 - `src/md.ts` — the ONE markdown pipeline (parse → mdast → html; mdast → markdown). The editor
   and the tests both use it, so what the tests prove is what the app renders.
 - `src/main.ts` — window bootstrap: read argv path via Tauri command, mount editor, wire save.
+  Every save writes `normalizeForSave(editor markdown)`, never Milkdown's raw output.
+- `src/links.ts` — pure link resolution (href classification, relative paths, heading slugs).
+  Ctrl/Cmd+Click follows a link; plain click edits.
 - `src-tauri/src/lib.rs` — commands: `get_argv`, `read_file`, `write_file`. Nothing else.
 - `tests/` — vitest. `tests/fixtures/all-constructs.md` is the canonical coverage file.
+  `tests/editor.ts` runs real Milkdown headless (jsdom) so the editor → save path is tested.
 
 ## Commands
 - `npm test` — vitest (headless; the loop's exit condition)
 - `npm run build` — tsc + vite build
 - `npm run tauri dev` / `npm run tauri build`
 - `./verify.sh` — the mechanical done-check (tests + build [+ xvfb smoke when available])
+
+## Releasing
+Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
+(plus the lockfiles), add a `CHANGELOG.md` entry, merge to `main`, then push a `vX.Y.Z` tag.
+`.github/workflows/release.yml` builds and publishes the installers. Update `aur/PKGBUILD`
+(`pkgver`, checksum) after the release assets exist.
 
 ## Rules for autonomous loops
 - Work ONLY on the task in `loop/PROMPT.md`. Do not refactor, rename, or "improve" outside it.
