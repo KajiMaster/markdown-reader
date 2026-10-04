@@ -1,12 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog, save as saveDialog, confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
-import { dirname } from "@tauri-apps/api/path";
+import { dirname, homeDir } from "@tauri-apps/api/path";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Crepe } from "@milkdown/crepe";
 import { editorViewCtx } from "@milkdown/kit/core";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/classic.css";
 import { normalizeForSave } from "./md";
+import { windowTitle } from "./title";
 import { classifyHref, headingSlugs, htmlAnchorId } from "./links";
 import { commentChipView, commentHighlight } from "./comments-editor";
 import { initComments, openBox, refreshComments, togglePanel } from "./comments-ui";
@@ -21,6 +23,15 @@ let diskContent: string | null = null;
 // "dirty" means "differs from this", not "an update event fired".
 let cleanMarkdown = "";
 
+let home: string | null = null;
+let shownTitle = "";
+function updateTitle(): void {
+  const title = windowTitle(currentPath, dirty, home);
+  if (title === shownTitle) return;
+  shownTitle = title;
+  void getCurrentWindow().setTitle(title);
+}
+
 async function saveTo(path: string): Promise<void> {
   if (!crepe) return;
   const content = normalizeForSave(crepe.getMarkdown());
@@ -29,6 +40,7 @@ async function saveTo(path: string): Promise<void> {
   diskContent = content;
   cleanMarkdown = crepe.getMarkdown();
   dirty = false;
+  updateTitle();
 }
 
 /** Saves to the current path (asking for one if needed). Resolves false if cancelled. */
@@ -59,6 +71,7 @@ async function loadDocument(content: string, path: string | null): Promise<void>
   crepe.on((listener) => {
     listener.markdownUpdated((_ctx, markdown) => {
       dirty = markdown !== cleanMarkdown;
+      updateTitle();
       refreshComments();
     });
   });
@@ -67,6 +80,7 @@ async function loadDocument(content: string, path: string | null): Promise<void>
   currentPath = path;
   diskContent = path ? content : null;
   dirty = false;
+  updateTitle();
   hideStatus();
   refreshComments();
 }
@@ -282,6 +296,7 @@ window.addEventListener("keydown", (event) => {
 
 async function bootstrap(): Promise<void> {
   initZoom();
+  home = await homeDir().catch(() => null);
   initComments({
     view: editorView,
     markdown: () => crepe?.getMarkdown() ?? "",
