@@ -19,6 +19,7 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
   and the tests both use it, so what the tests prove is what the app renders.
 - `src/main.ts` — window bootstrap: read argv path via Tauri command, mount editor, wire save.
   Every save writes `normalizeForSave(editor markdown)`, never Milkdown's raw output.
+- `src/title.ts` — window title (`● name — ~/dir — md-read`); needs `core:window:allow-set-title`.
 - `src/links.ts` — pure link resolution (href classification, relative paths, heading slugs).
   Ctrl/Cmd+Click follows a link; plain click edits.
 - `src/comments.ts` — pure marker syntax (parse/serialize, list, Claude prompt).

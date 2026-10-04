@@ -28,6 +28,9 @@ scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Comment on the selected blocks (for Claude) |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | Show / hide the comments panel |
 
+The window title shows the file and its folder (`notes.md — ~/projects — md-read`), with a
+`●` while there are unsaved edits.
+
 A plain click on a link only places the cursor, so link text stays editable. On macOS use
 <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
 

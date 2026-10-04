@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- **Window title shows the document.** The title is now `notes.md — ~/folder — md-read`, with a
+  `●` in front while there are unsaved edits, so several open windows are easy to tell apart.
+
 ## 0.6.0
 
 - **@claude comments.** Select blocks, press Ctrl+Alt+M, and leave a comment for Claude. It is
