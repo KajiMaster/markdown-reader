@@ -24,6 +24,8 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 - `src/comments.ts` — pure marker syntax (parse/serialize, list, Claude prompt).
   `src/comments-editor.ts` — ProseMirror ops (add/reply/resolve), chip view, range highlight.
   `src/comments-ui.ts` — side panel and new-comment box (DOM only).
+- `skills/md-comments/SKILL.md` — Claude Code skill that answers the comments; keep its format
+  section in sync with `src/comments.ts`.
 - `docs/` — the static website (GitHub Pages, served from `main` → `/docs`).
 - `src-tauri/src/lib.rs` — commands: `get_argv`, `read_file`, `write_file`. Nothing else.
 - `tests/` — vitest. `tests/fixtures/all-constructs.md` is the canonical coverage file.

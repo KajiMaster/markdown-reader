@@ -60,6 +60,13 @@ either removes the markers (done) or adds a `claude: …` reply line to the thre
 watches the file and reloads as soon as Claude saves, so you see the result live. If you have
 unsaved edits at that moment, it asks before replacing anything.
 
+**Skip the copy-paste:** install the bundled Claude Code skill once, then run
+`/md-comments notes.md` in Claude Code.
+
+```sh
+mkdir -p ~/.claude/skills && cp -r skills/md-comments ~/.claude/skills/
+```
+
 Reply to a thread or **Resolve** it (removes the markers, keeps the text) from the panel.
 md-read never calls an AI service itself: no API key, no network, no cost.
 

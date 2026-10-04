@@ -6,6 +6,8 @@
   stored in the Markdown file as an HTML comment (invisible in other renderers), shown as a
   chip with the commented blocks highlighted, and listed in a side panel where you can reply
   or resolve. **Copy prompt for Claude** hands the whole review to Claude Code.
+- **`/md-comments` Claude Code skill** in `skills/md-comments/`: run `/md-comments file.md` to
+  have Claude answer every open comment without copying a prompt.
 - **Live reload.** When the open file changes on disk (e.g. Claude Code edits it), md-read
   reloads it. If you have unsaved edits, it asks first.
 - **Fixed:** a freshly opened file no longer counts as having unsaved changes, so the Ctrl+O
