@@ -6,6 +6,8 @@
 
 <p align="center">A lightweight, cross-platform Markdown viewer/editor.</p>
 
+<p align="center"><a href="https://kajimaster.github.io/markdown-reader/">Website</a> · <a href="https://github.com/KajiMaster/markdown-reader/releases/latest">Download</a> · <a href="CHANGELOG.md">Changelog</a></p>
+
 `md-read /path/to/file.md &` opens a window showing the **rendered** document — no raw
 tags. The rendered view is editable in place: <kbd>Ctrl</kbd>+<kbd>S</kbd> saves back to the
 same file, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves as. That's the whole app —
@@ -23,12 +25,50 @@ scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 | <kbd>Ctrl</kbd>+Click a link | Follow it: web links open in your browser, `#heading` links scroll, relative `.md` links open in the same window |
 | <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd> | Zoom in / out / reset |
 | <kbd>Ctrl</kbd>+<kbd>P</kbd> | Print |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Comment on the selected blocks (for Claude) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | Show / hide the comments panel |
 
 A plain click on a link only places the cursor, so link text stays editable. On macOS use
 <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.
 
 Saving always writes Markdown through the same tested pipeline the app renders with
 (`src/md.ts`), so a save never quietly changes `-` bullets to `*` or reformats tables.
+
+## Ask Claude about part of a document
+
+Select one or more paragraphs, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>, and type what
+you want ("merge these", "is this claim right?"). The comment is saved **in the Markdown file
+itself**, wrapped around the blocks it's about:
+
+```md
+<!-- @claude c1: merge these two paragraphs -->
+
+First paragraph…
+
+Second paragraph…
+
+<!-- /@claude c1 -->
+```
+
+HTML comments are invisible on GitHub and in other Markdown renderers, so the file stays clean
+everywhere else. In md-read they show as a 💬 chip with the commented blocks highlighted, and
+every thread is listed in the side panel.
+
+To get answers, click **Copy prompt for Claude** in the panel (it saves first) and paste the
+prompt into [Claude Code](https://claude.com/claude-code). Claude edits the marked text and
+either removes the markers (done) or adds a `claude: …` reply line to the thread. md-read
+watches the file and reloads as soon as Claude saves, so you see the result live. If you have
+unsaved edits at that moment, it asks before replacing anything.
+
+**Skip the copy-paste:** install the bundled Claude Code skill once, then run
+`/md-comments notes.md` in Claude Code.
+
+```sh
+mkdir -p ~/.claude/skills && cp -r skills/md-comments ~/.claude/skills/
+```
+
+Reply to a thread or **Resolve** it (removes the markers, keeps the text) from the panel.
+md-read never calls an AI service itself: no API key, no network, no cost.
 
 ## Install
 
