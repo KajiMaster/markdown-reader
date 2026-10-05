@@ -20,10 +20,34 @@
         <div class="comments-list"></div>
       </aside>
     </div>
+    <button id="comment-add" hidden aria-label="Comment">💬</button>
     <div id="comment-box" hidden>
-      <textarea rows="3" placeholder="Ask Claude about the selected blocks…"></textarea>
+      <textarea rows="3" placeholder="Ask or challenge Claude about the selected blocks…"></textarea>
       <small>Enter to add · Shift+Enter for a new line · Esc to cancel</small>
     </div>
     <div id="status" hidden><span></span></div>
+    <button id="about-button" title="About md-read (F1)" aria-label="About md-read">?</button>
+    <div id="about" hidden>
+      <div class="about-card" role="dialog" aria-labelledby="about-title">
+        <button class="about-close" aria-label="Close">×</button>
+        <h2 id="about-title">md-read <span class="about-version"></span></h2>
+        <p>A small Markdown viewer and editor.</p>
+        <table>
+          <tr><td>Ctrl+S / Ctrl+Shift+S</td><td>Save / save as</td></tr>
+          <tr><td>Ctrl+O</td><td>Open a file</td></tr>
+          <tr><td>Ctrl+Click</td><td>Follow a link</td></tr>
+          <tr><td>Ctrl+Alt+M</td><td>Start a thread with Claude on the selection</td></tr>
+          <tr><td>Ctrl+Shift+M</td><td>Show / hide threads</td></tr>
+          <tr><td>Ctrl + / - / 0</td><td>Zoom</td></tr>
+          <tr><td>Ctrl+P</td><td>Print</td></tr>
+          <tr><td>F1</td><td>This box</td></tr>
+        </table>
+        <p class="about-links">
+          <button data-url="https://kajimaster.github.io/markdown-reader/">Website</button>
+          <button data-url="https://github.com/KajiMaster/markdown-reader/releases/latest">Latest release</button>
+          <button data-url="https://github.com/KajiMaster/markdown-reader/blob/main/CHANGELOG.md">Changelog</button>
+        </p>
+      </div>
+    </div>
   </body>
 </html>

@@ -25,8 +25,9 @@ scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 | <kbd>Ctrl</kbd>+Click a link | Follow it: web links open in your browser, `#heading` links scroll, relative `.md` links open in the same window |
 | <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd> | Zoom in / out / reset |
 | <kbd>Ctrl</kbd>+<kbd>P</kbd> | Print |
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Comment on the selected blocks (for Claude) |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | Show / hide the comments panel |
+| 💬 in the margin, or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Start a Claude thread on the hovered/selected blocks |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | Show / hide the threads panel |
+| <kbd>F1</kbd> or the `?` button | About: version, keys, links |
 
 The window title shows the file and its folder (`notes.md — ~/projects — md-read`), with a
 `●` while there are unsaved edits.
@@ -37,41 +38,43 @@ A plain click on a link only places the cursor, so link text stays editable. On 
 Saving always writes Markdown through the same tested pipeline the app renders with
 (`src/md.ts`), so a save never quietly changes `-` bullets to `*` or reformats tables.
 
-## Ask Claude about part of a document
+## Argue with Claude about any passage
 
-Select one or more paragraphs, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>, and type what
-you want ("merge these", "is this claim right?"). The comment is saved **in the Markdown file
-itself**, wrapped around the blocks it's about:
+Hover a paragraph, heading, list or table and click the 💬 that appears in the right margin
+(or select several blocks first, or press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>). Type a
+question or a challenge: "is this claim defensible?", "tighten this", "you're wrong about X".
+
+Claude answers in **that passage's own thread** in the side panel, usually within a few
+seconds. Reply to keep going. If you ask for a change, Claude rewrites just that passage in
+place; one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it. If you edit the passage while Claude is
+thinking, it replies but doesn't overwrite your edit.
+
+**How it works:** md-read runs your local [Claude Code](https://claude.com/claude-code) CLI
+(`claude`) for each message, with all of Claude's tools turned off, so it can only answer; the
+app applies any rewrite itself. It uses your own Claude Code login, and nothing runs unless you
+send a message. Without Claude Code installed, threads still work as notes, and the
+**Copy prompt for Claude** button or the bundled `/md-comments` skill can answer them later.
+
+Threads are saved **in the Markdown file itself**, wrapped around the blocks they're about:
 
 ```md
-<!-- @claude c1: merge these two paragraphs -->
+<!-- @claude c1: is "fastest editor ever made" defensible?
+claude: No. One benchmark against vim disproves it. I rewrote it to a claim you can back up. -->
 
-First paragraph…
-
-Second paragraph…
+md-read opens instantly and stays responsive on large files.
 
 <!-- /@claude c1 -->
 ```
 
-HTML comments are invisible on GitHub and in other Markdown renderers, so the file stays clean
-everywhere else. In md-read they show as a 💬 chip with the commented blocks highlighted, and
-every thread is listed in the side panel.
+HTML comments are invisible on GitHub and in other Markdown renderers. **Resolve** removes the
+markers and keeps the text. Threads only reach disk when you save.
 
-To get answers, click **Copy prompt for Claude** in the panel (it saves first) and paste the
-prompt into [Claude Code](https://claude.com/claude-code). Claude edits the marked text and
-either removes the markers (done) or adds a `claude: …` reply line to the thread. md-read
-watches the file and reloads as soon as Claude saves, so you see the result live. If you have
-unsaved edits at that moment, it asks before replacing anything.
-
-**Skip the copy-paste:** install the bundled Claude Code skill once, then run
-`/md-comments notes.md` in Claude Code.
+To answer every open thread at once from Claude Code, install the bundled skill and run
+`/md-comments notes.md`:
 
 ```sh
 mkdir -p ~/.claude/skills && cp -r skills/md-comments ~/.claude/skills/
 ```
-
-Reply to a thread or **Resolve** it (removes the markers, keeps the text) from the panel.
-md-read never calls an AI service itself: no API key, no network, no cost.
 
 ## Install
 

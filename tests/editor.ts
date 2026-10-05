@@ -1,16 +1,18 @@
 // Headless Milkdown with the same presets Crepe builds on, so tests exercise the real
 // editor → markdown path the app saves through.
-import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from "@milkdown/kit/core";
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx, parserCtx } from "@milkdown/kit/core";
 import { commonmark } from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { getMarkdown } from "@milkdown/kit/utils";
 import type { EditorView } from "@milkdown/kit/prose/view";
+import type { Node as PMNode } from "@milkdown/kit/prose/model";
 import { commentChipView, commentHighlight } from "../src/comments-editor";
 
 export interface TestEditor {
   view: EditorView;
   root: HTMLElement;
   markdown: () => string;
+  parse: (md: string) => PMNode;
   destroy: () => Promise<void>;
 }
 
@@ -30,6 +32,7 @@ export async function makeEditor(md: string): Promise<TestEditor> {
     view: editor.action((ctx) => ctx.get(editorViewCtx)),
     root,
     markdown: () => editor.action(getMarkdown()),
+    parse: (md: string) => editor.action((ctx) => ctx.get(parserCtx)(md)),
     destroy: async () => {
       await editor.destroy();
       root.remove();

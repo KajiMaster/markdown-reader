@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+- **A Claude thread on any passage.** Hover a paragraph, heading, list or table (or select
+  several) and click the 💬 in the right margin. Write your question or challenge; Claude answers
+  in that passage's own thread within seconds. Reply to keep arguing. When you ask for a change,
+  Claude rewrites just that passage, and one Ctrl+Z undoes it. md-read runs your local Claude
+  Code (`claude`) with every tool disabled, using your own login; the app applies edits itself.
+- **About box.** The `?` button (or F1) shows the version, keys and links.
+- **Fixed:** on Linux/Wayland the visible title bar kept saying "md-read" even though the
+  window title had changed. It now shows the file and folder.
+
 ## 0.6.1
 
 - **Window title shows the document.** The title is now `notes.md — ~/folder — md-read`, with a

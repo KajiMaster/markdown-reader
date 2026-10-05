@@ -1,27 +1,71 @@
 // The comments side panel and the "new comment" box. Editing goes through comments-editor.ts;
 // this file only builds DOM and wires events.
 import type { EditorView } from "@milkdown/kit/prose/view";
+import type { Node as PMNode } from "@milkdown/kit/prose/model";
 import { claudePrompt, listComments, type Comment } from "./comments";
-import { addComment, replyToComment, resolveComment, scrollToComment } from "./comments-editor";
+import { $prose } from "@milkdown/kit/utils";
+import { Plugin } from "@milkdown/kit/prose/state";
+import {
+  addComment,
+  answerThread,
+  blockAt,
+  commentsAt,
+  replyToComment,
+  resolveComment,
+  scrollToComment,
+  selectedBlocks,
+} from "./comments-editor";
+import { buildRequest, parseAnswer, passageOf } from "./claude";
+import { normalizeForSave } from "./md";
 
 export interface CommentsHost {
   view: () => EditorView | null;
   markdown: () => string;
+  parse: (md: string) => PMNode;
+  askClaude: (system: string, prompt: string) => Promise<string>;
   path: () => string | null;
   save: () => Promise<boolean>;
   status: (message: string) => void;
 }
 
+// Per-thread Claude state. Kept in memory only; only real replies are written to the file.
+const thinking = new Set<string>();
+const failures = new Map<string, string>();
+
 const panel = document.querySelector<HTMLElement>("#comments")!;
 const list = panel.querySelector<HTMLElement>(".comments-list")!;
 const box = document.querySelector<HTMLElement>("#comment-box")!;
 const boxInput = box.querySelector<HTMLTextAreaElement>("textarea")!;
+const addButton = document.querySelector<HTMLButtonElement>("#comment-add")!;
+
+type Range = { from: number; to: number };
+/** What the margin 💬 button will comment on: the selection, or the hovered block. */
+let buttonRange: Range | null = null;
+let buttonFromSelection = false;
+/** What the open "new comment" box will comment on. */
+let boxRange: Range | null = null;
+let hideTimer: number | undefined;
 
 let host: CommentsHost;
 let userHidden = false;
 
 export function initComments(h: CommentsHost): void {
   host = h;
+  // Keep the editor's selection when the button is pressed.
+  addButton.addEventListener("mousedown", (event) => event.preventDefault());
+  addButton.addEventListener("click", () => {
+    if (buttonRange) openBox(buttonRange);
+  });
+  addButton.addEventListener("mouseenter", () => window.clearTimeout(hideTimer));
+  const editorEl = document.querySelector<HTMLElement>("#editor")!;
+  editorEl.addEventListener("mousemove", onHover);
+  editorEl.addEventListener("mouseleave", () => {
+    if (!buttonFromSelection) hideButtonSoon();
+  });
+  editorEl.addEventListener("scroll", () => {
+    if (!buttonFromSelection) hideButton();
+    else placeForSelection();
+  });
   panel.querySelector(".comments-copy")!.addEventListener("click", () => void copyPrompt());
   panel.querySelector(".comments-close")!.addEventListener("click", () => togglePanel(false));
   boxInput.addEventListener("keydown", (event) => {
@@ -53,7 +97,7 @@ export function refreshComments(): void {
   if (!comments.length) {
     const empty = document.createElement("p");
     empty.className = "comments-empty";
-    empty.textContent = "Select text and press Ctrl+Alt+M to ask Claude about it.";
+    empty.textContent = "Select text and press Ctrl+Alt+M to start a thread with Claude about it.";
     list.append(empty);
   }
   panel.hidden = userHidden || !comments.length;
@@ -83,12 +127,29 @@ function renderThread(comment: Comment): HTMLElement {
     thread.append(p);
   }
 
+  const last = comment.messages[comment.messages.length - 1];
+  if (thinking.has(comment.id)) {
+    const p = document.createElement("p");
+    p.className = "msg msg-thinking";
+    p.textContent = "Claude is thinking…";
+    thread.append(p);
+  } else if (failures.has(comment.id)) {
+    const p = document.createElement("p");
+    p.className = "msg msg-error";
+    p.textContent = failures.get(comment.id)!;
+    thread.append(p, askButton(comment.id, "Try again"));
+  } else if (last.author === "you") {
+    thread.append(askButton(comment.id, "Ask Claude"));
+  }
+
   const reply = document.createElement("input");
-  reply.placeholder = "Reply…";
+  reply.placeholder = "Reply to Claude…";
   reply.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" || !reply.value.trim()) return;
     const view = host.view();
-    if (view) replyToComment(view, comment.id, "you", reply.value.trim());
+    if (!view) return;
+    replyToComment(view, comment.id, "you", reply.value.trim());
+    void ask(comment.id);
   });
 
   const resolve = document.createElement("button");
@@ -107,13 +168,131 @@ function renderThread(comment: Comment): HTMLElement {
   return thread;
 }
 
-/** Opens the "new comment" box next to the current selection. */
-export function openBox(): void {
+function askButton(id: string, label: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.className = "thread-ask";
+  button.textContent = label;
+  button.addEventListener("click", () => void ask(id));
+  return button;
+}
+
+/**
+ * Asks Claude about one thread and applies the answer. If the passage was edited while Claude
+ * was thinking, the reply is still added but the rewrite is not applied over the new text.
+ */
+async function ask(id: string): Promise<void> {
+  if (thinking.has(id)) return;
+  const request = buildRequest(normalizeForSave(host.markdown()), id);
+  if (!request) return;
+  thinking.add(id);
+  failures.delete(id);
+  refreshComments();
+  try {
+    const answer = parseAnswer(await host.askClaude(request.system, request.prompt));
+    const view = host.view();
+    if (!view) return;
+    let { reply, replacement } = answer;
+    if (replacement !== null && passageOf(normalizeForSave(host.markdown()), id) !== request.passage) {
+      replacement = null;
+      reply += " (The text changed while I was answering, so I didn't apply my edit. Ask again to retry.)";
+    }
+    answerThread(view, id, reply, replacement, host.parse);
+  } catch (error) {
+    failures.set(id, String(error));
+  } finally {
+    thinking.delete(id);
+    refreshComments();
+  }
+}
+
+// ---- the margin 💬 button -------------------------------------------------------------
+
+/** Right edge of the text column: the block elements span it, the editor itself is wider. */
+function columnRight(view: EditorView, range: Range): number {
+  const dom = view.nodeDOM(range.from);
+  const rect = dom instanceof HTMLElement ? dom.getBoundingClientRect() : view.dom.getBoundingClientRect();
+  return rect.right;
+}
+
+function showButton(view: EditorView, range: Range, top: number, fromSelection: boolean): void {
+  window.clearTimeout(hideTimer);
+  buttonRange = range;
+  buttonFromSelection = fromSelection;
+  addButton.style.top = `${Math.max(4, top)}px`;
+  addButton.style.left = `${Math.min(columnRight(view, range) + 12, window.innerWidth - 40)}px`;
+  addButton.title = fromSelection ? "Comment on the selection (Ctrl+Alt+M)" : "Comment on this block";
+  addButton.hidden = false;
+}
+
+function hideButton(): void {
+  addButton.hidden = true;
+  buttonRange = null;
+  buttonFromSelection = false;
+}
+
+function hideButtonSoon(): void {
+  window.clearTimeout(hideTimer);
+  hideTimer = window.setTimeout(hideButton, 400);
+}
+
+function placeForSelection(): void {
+  const view = host.view();
+  const range = view ? selectedBlocks(view) : null;
+  if (!view || !range) return;
+  showButton(view, range, view.coordsAtPos(view.state.selection.from).top - 2, true);
+}
+
+function onHover(event: MouseEvent): void {
+  const view = host.view();
+  if (!view || !box.hidden || buttonFromSelection) return;
+  // Hovering in the margin beside a block counts as hovering the block.
+  const column = view.dom.getBoundingClientRect();
+  const style = getComputedStyle(view.dom);
+  const left = Math.min(
+    Math.max(event.clientX, column.left + parseFloat(style.paddingLeft) + 4),
+    column.right - parseFloat(style.paddingRight) - 4,
+  );
+  const pos = view.posAtCoords({ left, top: event.clientY });
+  const block = pos ? (blockAt(view, pos.pos) ?? (pos.inside >= 0 ? blockAt(view, pos.inside + 1) : null)) : null;
+  const dom = block ? view.nodeDOM(block.from) : null;
+  if (!block || !(dom instanceof HTMLElement)) {
+    hideButtonSoon();
+    return;
+  }
+  showButton(view, block, dom.getBoundingClientRect().top, false);
+}
+
+/** Selection changes: show the button for a selection, and mark the thread under the cursor. */
+function onEditorUpdate(view: EditorView): void {
+  if (selectedBlocks(view) && box.hidden) placeForSelection();
+  else if (buttonFromSelection) hideButton();
+  const active = new Set(commentsAt(view, view.state.selection.from));
+  for (const el of list.querySelectorAll<HTMLElement>(".thread")) {
+    el.classList.toggle("active", active.has(el.dataset.thread ?? ""));
+  }
+}
+
+export const commentAffordance = $prose(
+  () =>
+    new Plugin({
+      view: () => ({ update: (view) => onEditorUpdate(view) }),
+    }),
+);
+
+/**
+ * Opens the "new comment" box for `range`, or for the selected blocks, or the block holding
+ * the cursor.
+ */
+export function openBox(range?: Range): void {
   const view = host.view();
   if (!view) return;
-  const coords = view.coordsAtPos(view.state.selection.from);
-  box.style.top = `${Math.min(coords.bottom + 6, window.innerHeight - 120)}px`;
-  box.style.left = `${Math.max(8, Math.min(coords.left, window.innerWidth - 340))}px`;
+  const target = range ?? selectedBlocks(view) ?? blockAt(view, view.state.selection.from);
+  if (!target) return;
+  boxRange = target;
+  hideButton();
+  const top = view.coordsAtPos(Math.min(target.from + 1, view.state.doc.content.size)).top;
+  box.style.top = `${Math.max(8, Math.min(top, window.innerHeight - 140))}px`;
+  box.style.left = `${Math.max(8, Math.min(columnRight(view, target) - 320, window.innerWidth - 340))}px`;
   box.hidden = false;
   boxInput.value = "";
   boxInput.focus();
@@ -129,9 +308,12 @@ function submitBox(): void {
   const text = boxInput.value.trim();
   const view = host.view();
   closeBox();
-  if (!text || !view) return;
-  addComment(view, text);
+  const range = boxRange;
+  boxRange = null;
+  if (!text || !view || !range) return;
+  const id = addComment(view, text, range);
   togglePanel(true);
+  void ask(id);
 }
 
 async function copyPrompt(): Promise<void> {
