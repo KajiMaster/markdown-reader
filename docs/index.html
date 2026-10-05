@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>md-read</title>
-<meta name="description" content="A small, fast Markdown viewer and editor. Open a file, read it rendered, fix it in place, and leave @claude comments that Claude Code answers in the file.">
+<meta name="description" content="A small, fast Markdown viewer and editor. Open a file, read it rendered, fix it in place, and argue with Claude about any passage in its own thread.">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -173,7 +173,7 @@ footer {
 <div class="wrap">
   <nav>
     <a class="name" href="./">md-read</a>
-    <a href="#claude">Comments</a>
+    <a href="#claude">Claude threads</a>
     <a href="#install">Install</a>
     <a href="https://github.com/KajiMaster/markdown-reader">GitHub</a>
   </nav>
@@ -182,7 +182,7 @@ footer {
   <p class="lede">md-read shows a Markdown file the way it's meant to look, lets you edit the rendered page directly, and saves plain Markdown back to the same file. No vault, no account, no sync.</p>
 
   <div class="get">
-    <a class="button" href="https://github.com/KajiMaster/markdown-reader/releases/latest">Download v0.6.1</a>
+    <a class="button" href="https://github.com/KajiMaster/markdown-reader/releases/latest">Download v0.7.0</a>
     <span class="meta">Linux, Windows, macOS. Free and MIT licensed.</span>
   </div>
 </div>
@@ -190,7 +190,7 @@ footer {
 <div class="wide">
   <figure>
     <img src="screenshot.png" width="2560" height="1520" alt="md-read showing a launch checklist. Two paragraphs are highlighted under a comment asking Claude to merge them, and the side panel shows Claude's reply.">
-    <figcaption>A document with an open @claude comment. The highlighted blocks are what the comment is about; Claude's reply is in the panel.</figcaption>
+    <figcaption>A passage with its own Claude thread. The highlighted blocks are what the thread is about; Claude's reply is in the panel.</figcaption>
   </figure>
 </div>
 
@@ -200,26 +200,19 @@ footer {
   <p>The window opens on the rendered document. Click anywhere and type. <kbd>Ctrl</kbd>+<kbd>S</kbd> writes it back as Markdown through the same pipeline that renders it, so your <code>-</code> bullets, tables and footnotes come back the way you wrote them.</p>
   <p>It covers CommonMark and GitHub-flavored Markdown: tables, task lists, strikethrough, autolinks and footnotes. <kbd>Ctrl</kbd>+Click follows links, including <code>#heading</code> jumps and relative <code>.md</code> files.</p>
 
-  <h2 id="claude">Leave a note for Claude</h2>
-  <p>Select the paragraphs you want help with, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>, and write what you want. The comment is saved inside the file, around the text it's about:</p>
-<pre><code><span class="c">&lt;!-- @claude c1: merge these two paragraphs --&gt;</span>
+  <h2 id="claude">Argue with Claude about any passage</h2>
+  <p>Hover a paragraph, heading, list or table and a 💬 appears in the margin. Click it (or select several blocks first) and write a question or a challenge: "is this claim defensible?", "tighten this", "you're wrong about the dates".</p>
+  <p>Claude answers in that passage's own thread, usually within a few seconds. Reply to keep going. When you ask for a change, Claude rewrites just that passage in place, and one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it.</p>
+  <p>Threads live inside the file, around the text they're about:</p>
+<pre><code><span class="c">&lt;!-- @claude c1: is "fastest editor ever made" defensible?
+claude: No. One benchmark against vim disproves it. --&gt;</span>
 
-We will ship to the first 40 testers on Thursday morning.
-
-Testers get the build Thursday, so it must be green before then.
+md-read opens instantly and stays responsive on large files.
 
 <span class="c">&lt;!-- /@claude c1 --&gt;</span></code></pre>
-  <p>They're ordinary HTML comments, so GitHub and every other Markdown viewer hide them. The file stays readable everywhere else.</p>
+  <p>They're ordinary HTML comments, so GitHub and every other Markdown viewer hide them. <strong>Resolve</strong> removes the markers and keeps the text.</p>
 
-  <ol class="steps">
-    <li><strong>Comment</strong> on any block or group of blocks. Each comment gets a chip in the page and a thread in the side panel.</li>
-    <li><strong>Copy prompt for Claude</strong> saves the file and copies a short instruction. Paste it into Claude Code.</li>
-    <li><strong>Watch it land.</strong> Claude edits the marked text, then removes the markers or replies in the thread. md-read reloads the file as soon as it changes, and asks first if you have unsaved edits.</li>
-  </ol>
-
-  <p>Using Claude Code a lot? Install the <a href="https://github.com/KajiMaster/markdown-reader/tree/main/skills/md-comments"><code>md-comments</code> skill</a> and just run <code>/md-comments notes.md</code>.</p>
-
-  <p class="note">md-read never talks to an AI service itself. There's no API key and nothing leaves your machine. The comments are text in your file, and you choose what reads them.</p>
+  <p class="note">md-read talks to Claude through your own <a href="https://claude.com/claude-code">Claude Code</a> install and login, with Claude's tools switched off: it can answer, and the app applies any rewrite itself. Nothing is sent unless you write in a thread. Without Claude Code, threads still work as notes, and the <a href="https://github.com/KajiMaster/markdown-reader/tree/main/skills/md-comments"><code>/md-comments</code> skill</a> can answer them later.</p>
 
   <h2>Keys</h2>
   <table>
@@ -227,8 +220,9 @@ Testers get the build Thursday, so it must be green before then.
     <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save. Add <kbd>Shift</kbd> to save as.</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Open another file</td></tr>
     <tr><td><kbd>Ctrl</kbd>+Click</td><td>Follow a link</td></tr>
-    <tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd></td><td>Comment on the selection</td></tr>
-    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd></td><td>Show or hide comments</td></tr>
+    <tr><td>💬 or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd></td><td>Start a Claude thread on a passage</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd></td><td>Show or hide threads</td></tr>
+    <tr><td><kbd>F1</kbd></td><td>About: version and keys</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd> <kbd>-</kbd> <kbd>0</kbd></td><td>Zoom in, out, reset</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Print (comments are left out)</td></tr>
   </table>
@@ -248,7 +242,7 @@ Testers get the build Thursday, so it must be green before then.
         <li>One file, one window</li>
         <li>CommonMark and GFM</li>
         <li>Editing the rendered page</li>
-        <li>@claude comments in the file</li>
+        <li>A Claude thread on any passage</li>
       </ul>
     </div>
     <div>
@@ -257,13 +251,13 @@ Testers get the build Thursday, so it must be green before then.
         <li>Vaults, wikilinks, callouts</li>
         <li>Math, Mermaid, front matter</li>
         <li>Plugins, accounts, sync</li>
-        <li>Built-in AI calls</li>
+        <li>API keys, cloud storage</li>
       </ul>
     </div>
   </div>
 
   <footer>
-    md-read v0.6.1 · <a href="https://github.com/KajiMaster/markdown-reader/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/KajiMaster/markdown-reader">Source</a> · MIT · Made by <a href="https://virtualexponent.com">VirtualExponent</a>
+    md-read v0.7.0 · <a href="https://github.com/KajiMaster/markdown-reader/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/KajiMaster/markdown-reader">Source</a> · MIT · Made by <a href="https://virtualexponent.com">VirtualExponent</a>
   </footer>
 </div>
 </body>

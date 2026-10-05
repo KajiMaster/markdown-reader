@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { normalizeForSave, toHtml } from "../src/md";
 import { listComments } from "../src/comments";
-import { addComment, replyToComment, resolveComment } from "../src/comments-editor";
+import { addComment, answerThread, blockAt, commentsAt, replyToComment, resolveComment } from "../src/comments-editor";
 import { makeEditor } from "./editor";
 
 const doc = "# Title\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n";
@@ -64,6 +64,51 @@ describe("comments in the editor", () => {
     expect(normalizeForSave(ed.markdown())).toMatch(
       /<!-- @claude c2: two -->\n\nFirst paragraph\.\n\n<!-- \/@claude c2 -->[\s\S]*<!-- @claude c1: one -->\n\nThird paragraph\.\n\n<!-- \/@claude c1 -->/,
     );
+    await ed.destroy();
+  });
+
+  it("applies Claude's answer: reply plus rewrite in one undoable step", async () => {
+    const ed = await makeEditor(
+      "Intro.\n\n<!-- @claude c1: merge these -->\n\nOne.\n\nTwo.\n\n<!-- /@claude c1 -->\n\nOutro.\n",
+    );
+    expect(answerThread(ed.view, "c1", "Merged.", "One and **two**.", ed.parse)).toBe(true);
+    expect(normalizeForSave(ed.markdown())).toBe(
+      "Intro.\n\n<!-- @claude c1: merge these\nclaude: Merged. -->\n\nOne and **two**.\n\n<!-- /@claude c1 -->\n\nOutro.\n",
+    );
+    expect(answerThread(ed.view, "c1", "Still fine.", null, ed.parse)).toBe(true);
+    expect(normalizeForSave(ed.markdown())).toMatch(/claude: Merged\.\nclaude: Still fine\. -->\n\nOne and \*\*two\*\*\./);
+    expect(answerThread(ed.view, "c9", "x", null, ed.parse)).toBe(false);
+    await ed.destroy();
+  });
+
+  it("comments on a single hovered block, and finds which thread a position is in", async () => {
+    const ed = await makeEditor(doc);
+    let third = -1;
+    ed.view.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text!.startsWith("Third")) third = pos;
+      return true;
+    });
+    const block = blockAt(ed.view, third)!;
+    expect(addComment(ed.view, "too long", block)).toBe("c1");
+    expect(normalizeForSave(ed.markdown())).toMatch(
+      /Second paragraph\.\n\n<!-- @claude c1: too long -->\n\nThird paragraph\.\n\n<!-- \/@claude c1 -->\n$/,
+    );
+    let inside = -1;
+    let outside = -1;
+    ed.view.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text!.startsWith("Third")) inside = pos;
+      if (node.isText && node.text!.startsWith("First")) outside = pos;
+      return true;
+    });
+    expect(commentsAt(ed.view, inside)).toEqual(["c1"]);
+    expect(commentsAt(ed.view, outside)).toEqual([]);
+    // Marker lines themselves are not commentable blocks.
+    let markerPos = -1;
+    ed.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === "html" && markerPos === -1) markerPos = pos;
+      return true;
+    });
+    expect(blockAt(ed.view, markerPos)).toBeNull();
     await ed.destroy();
   });
 });

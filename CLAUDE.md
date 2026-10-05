@@ -7,10 +7,12 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 - `md-read /path/file.md &` opens a window showing the RENDERED document (no raw tags).
 - The rendered view is editable in place; Ctrl+S saves back to the same path, Ctrl+Shift+S = save-as.
 - Minimal, fast, no menus beyond what a single toolbar needs. No plugins, no vault, no sync.
-- @claude comments (v0.6): stored IN the .md as `<!-- @claude ID: … -->` … `<!-- /@claude ID -->`
-  HTML comments, rendered as chips + a side panel, never as raw tags. The app never calls an AI
-  service; Claude Code edits the file and the app reloads it (polls the open file every 1.5 s,
-  asks before overwriting unsaved edits).
+- @claude threads (v0.7): stored IN the .md as `<!-- @claude ID: … -->` … `<!-- /@claude ID -->`
+  HTML comments, rendered as chips + a side panel, never as raw tags. Started from the margin 💬
+  (hover/selection) or Ctrl+Alt+M. Each message runs the user's local `claude -p` with
+  `--tools ""` (answer only, own login, $0 extra); the APP applies any rewrite as one undoable
+  transaction. Never call an API directly or give Claude tools. The app also reloads the file
+  when it changes on disk (polls every 1.5 s, asks before overwriting unsaved edits).
 - v1 markdown scope: CommonMark + GFM (tables, task lists, strikethrough, autolinks, footnotes).
   NOT in scope: Obsidian wikilinks/callouts, math, mermaid, front-matter rendering.
 
@@ -24,11 +26,15 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
   Ctrl/Cmd+Click follows a link; plain click edits.
 - `src/comments.ts` — pure marker syntax (parse/serialize, list, Claude prompt).
   `src/comments-editor.ts` — ProseMirror ops (add/reply/resolve), chip view, range highlight.
-  `src/comments-ui.ts` — side panel and new-comment box (DOM only).
+  `src/comments-ui.ts` — side panel, margin 💬 button, new-comment box, per-thread Claude calls.
 - `skills/md-comments/SKILL.md` — Claude Code skill that answers the comments; keep its format
   section in sync with `src/comments.ts`.
 - `docs/` — the static website (GitHub Pages, served from `main` → `/docs`).
-- `src-tauri/src/lib.rs` — commands: `get_argv`, `read_file`, `write_file`. Nothing else.
+- `src/claude.ts` — pure: thread → prompt (document minus markers, passage, thread), answer JSON
+  → `{reply, replacement}`.
+- `src-tauri/src/lib.rs` — commands: `get_argv`, `read_file`, `write_file`, `ask_claude` (runs
+  the `claude` CLI headless, tools off). Plus a Linux fix that keeps tao's Wayland header-bar
+  label in sync with the window title. Nothing else.
 - `tests/` — vitest. `tests/fixtures/all-constructs.md` is the canonical coverage file.
   `tests/editor.ts` runs real Milkdown headless (jsdom) so the editor → save path is tested.
 

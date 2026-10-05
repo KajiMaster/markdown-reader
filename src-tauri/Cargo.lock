@@ -2020,8 +2020,9 @@ dependencies = [
 
 [[package]]
 name = "md-read"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
+ "gtk",
  "serde",
  "serde_json",
  "tauri",

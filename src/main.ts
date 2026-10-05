@@ -4,14 +4,15 @@ import { dirname, homeDir } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Crepe } from "@milkdown/crepe";
-import { editorViewCtx } from "@milkdown/kit/core";
+import { editorViewCtx, parserCtx } from "@milkdown/kit/core";
+import { getVersion } from "@tauri-apps/api/app";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/classic.css";
 import { normalizeForSave } from "./md";
 import { windowTitle } from "./title";
 import { classifyHref, headingSlugs, htmlAnchorId } from "./links";
 import { commentChipView, commentHighlight } from "./comments-editor";
-import { initComments, openBox, refreshComments, togglePanel } from "./comments-ui";
+import { commentAffordance, initComments, openBox, refreshComments, togglePanel } from "./comments-ui";
 
 let currentPath: string | null = null;
 let crepe: Crepe | null = null;
@@ -67,7 +68,7 @@ async function loadDocument(content: string, path: string | null): Promise<void>
     await crepe.destroy();
   }
   crepe = new Crepe({ root: "#editor", defaultValue: content });
-  crepe.editor.use([commentChipView, commentHighlight]);
+  crepe.editor.use([commentChipView, commentHighlight, commentAffordance]);
   crepe.on((listener) => {
     listener.markdownUpdated((_ctx, markdown) => {
       dirty = markdown !== cleanMarkdown;
@@ -253,6 +254,26 @@ function zoomReset(): void {
   applyZoom();
 }
 
+const about = document.querySelector<HTMLElement>("#about")!;
+
+function toggleAbout(show = about.hidden): void {
+  about.hidden = !show;
+}
+
+function initAbout(): void {
+  void getVersion().then((v) => {
+    about.querySelector(".about-version")!.textContent = `v${v}`;
+  });
+  document.querySelector("#about-button")!.addEventListener("click", () => toggleAbout(true));
+  about.querySelector(".about-close")!.addEventListener("click", () => toggleAbout(false));
+  about.addEventListener("click", (event) => {
+    if (event.target === about) toggleAbout(false);
+  });
+  for (const button of about.querySelectorAll<HTMLButtonElement>("[data-url]")) {
+    button.addEventListener("click", () => void openUrl(button.dataset.url!));
+  }
+}
+
 function updateFollowCursor(event: KeyboardEvent): void {
   document.body.classList.toggle("follow-links", event.ctrlKey || event.metaKey);
 }
@@ -261,6 +282,15 @@ window.addEventListener("blur", () => document.body.classList.remove("follow-lin
 
 window.addEventListener("keydown", (event) => {
   updateFollowCursor(event);
+  if (event.key === "F1") {
+    event.preventDefault();
+    toggleAbout();
+    return;
+  }
+  if (event.key === "Escape" && !about.hidden) {
+    toggleAbout(false);
+    return;
+  }
   if (!(event.ctrlKey || event.metaKey)) return;
   const key = event.key;
   if (key.toLowerCase() === "s") {
@@ -297,9 +327,12 @@ window.addEventListener("keydown", (event) => {
 async function bootstrap(): Promise<void> {
   initZoom();
   home = await homeDir().catch(() => null);
+  initAbout();
   initComments({
     view: editorView,
     markdown: () => crepe?.getMarkdown() ?? "",
+    parse: (md) => crepe!.editor.action((ctx) => ctx.get(parserCtx)(md)),
+    askClaude: (system, prompt) => invoke<string>("ask_claude", { system, prompt }),
     path: () => currentPath,
     save,
     status: (message) => showStatus(message),
