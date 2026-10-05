@@ -66,8 +66,11 @@ md-read opens instantly and stays responsive on large files.
 <!-- /@claude c1 -->
 ```
 
-HTML comments are invisible on GitHub and in other Markdown renderers. **Resolve** removes the
-markers and keeps the text. Threads only reach disk when you save.
+HTML comments are invisible on GitHub and in other Markdown renderers, and md-read hides them
+too: a commented passage is just highlighted, with a 💬 badge in the margin (filled once Claude
+has replied). Think of threads like tracked changes: they live in the file only while you're
+working on a passage. **Accept & resolve** (or **Resolve all** in the panel) removes the markers
+and keeps the text, so the file is plain Markdown again. Threads only reach disk when you save.
 
 To answer every open thread at once from Claude Code, install the bundled skill and run
 `/md-comments notes.md`:

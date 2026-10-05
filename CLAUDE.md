@@ -8,7 +8,9 @@ frontend (Vite) + Milkdown WYSIWYG editor on a unified/remark pipeline. Tested o
 - The rendered view is editable in place; Ctrl+S saves back to the same path, Ctrl+Shift+S = save-as.
 - Minimal, fast, no menus beyond what a single toolbar needs. No plugins, no vault, no sync.
 - @claude threads (v0.7): stored IN the .md as `<!-- @claude ID: … -->` … `<!-- /@claude ID -->`
-  HTML comments, rendered as chips + a side panel, never as raw tags. Started from the margin 💬
+  HTML comments. Marker lines are hidden (zero-height) in the editor; threads show as a highlight
+  + margin badge + side panel. An appendTransaction guard keeps marker paragraphs separate so
+  hidden markers can never swallow text. Started from the margin 💬
   (hover/selection) or Ctrl+Alt+M. Each message runs the user's local `claude -p` with
   `--tools ""` (answer only, own login, $0 extra); the APP applies any rewrite as one undoable
   transaction. Never call an API directly or give Claude tools. The app also reloads the file

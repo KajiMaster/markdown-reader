@@ -11,6 +11,7 @@ import {
   blockAt,
   commentsAt,
   replyToComment,
+  resolveAll,
   resolveComment,
   scrollToComment,
   selectedBlocks,
@@ -37,6 +38,8 @@ const list = panel.querySelector<HTMLElement>(".comments-list")!;
 const box = document.querySelector<HTMLElement>("#comment-box")!;
 const boxInput = box.querySelector<HTMLTextAreaElement>("textarea")!;
 const addButton = document.querySelector<HTMLButtonElement>("#comment-add")!;
+const badges = document.querySelector<HTMLElement>("#comment-badges")!;
+let comments: Comment[] = [];
 
 type Range = { from: number; to: number };
 /** What the margin 💬 button will comment on: the selection, or the hovered block. */
@@ -65,6 +68,8 @@ export function initComments(h: CommentsHost): void {
   editorEl.addEventListener("scroll", () => {
     if (!buttonFromSelection) hideButton();
     else placeForSelection();
+    const view = host.view();
+    if (view) renderBadges(view);
   });
   panel.querySelector(".comments-copy")!.addEventListener("click", () => void copyPrompt());
   panel.querySelector(".comments-close")!.addEventListener("click", () => togglePanel(false));
@@ -76,12 +81,13 @@ export function initComments(h: CommentsHost): void {
     }
   });
   boxInput.addEventListener("blur", closeBox);
-  // Clicking a chip in the document opens its thread.
-  document.addEventListener("click", (event) => {
-    const chip = (event.target as Element | null)?.closest?.<HTMLElement>(".md-comment-chip");
-    if (!chip?.dataset.commentId) return;
-    togglePanel(true);
-    panel.querySelector(`[data-thread="${chip.dataset.commentId}"]`)?.scrollIntoView({ block: "nearest" });
+  panel.querySelector(".comments-resolve-all")!.addEventListener("click", () => {
+    const view = host.view();
+    if (view) resolveAll(view);
+  });
+  window.addEventListener("resize", () => {
+    const view = host.view();
+    if (view) renderBadges(view);
   });
 }
 
@@ -92,7 +98,7 @@ export function togglePanel(show = panel.hidden): void {
 
 /** Re-reads the comments from the document. Call after every document change. */
 export function refreshComments(): void {
-  const comments = listComments(host.markdown());
+  comments = listComments(host.markdown());
   list.replaceChildren(...comments.map(renderThread));
   if (!comments.length) {
     const empty = document.createElement("p");
@@ -101,6 +107,41 @@ export function refreshComments(): void {
     list.append(empty);
   }
   panel.hidden = userHidden || !comments.length;
+  const view = host.view();
+  if (view) renderBadges(view);
+}
+
+function focusThread(id: string): void {
+  togglePanel(true);
+  const thread = panel.querySelector<HTMLElement>(`[data-thread="${id}"]`);
+  thread?.scrollIntoView({ block: "nearest" });
+  thread?.querySelector<HTMLInputElement>("input")?.focus();
+}
+
+/** A 💬 badge in the right margin beside the first block of each thread. */
+function renderBadges(view: EditorView): void {
+  const byId = new Map(comments.map((c) => [c.id, c]));
+  const out: HTMLElement[] = [];
+  for (const block of view.dom.querySelectorAll<HTMLElement>(".md-commented-first")) {
+    const rect = block.getBoundingClientRect();
+    const ids = (block.dataset.commentFirst ?? "").split(" ").filter((id) => byId.has(id));
+    ids.forEach((id, i) => {
+      const comment = byId.get(id)!;
+      const last = comment.messages[comment.messages.length - 1];
+      const badge = document.createElement("button");
+      badge.className = "md-comment-badge";
+      if (last.author !== "you") badge.classList.add("replied");
+      if (thinking.has(id)) badge.classList.add("thinking");
+      badge.textContent = "💬";
+      badge.title = `${comment.messages[0].text}\n(${comment.messages.length} message${comment.messages.length > 1 ? "s" : ""})`;
+      badge.style.top = `${rect.top + i * 34}px`;
+      badge.style.left = `${Math.min(rect.right + 12, window.innerWidth - 40)}px`;
+      badge.addEventListener("mousedown", (event) => event.preventDefault());
+      badge.addEventListener("click", () => focusThread(id));
+      out.push(badge);
+    });
+  }
+  badges.replaceChildren(...out);
 }
 
 function renderThread(comment: Comment): HTMLElement {
@@ -154,7 +195,7 @@ function renderThread(comment: Comment): HTMLElement {
 
   const resolve = document.createElement("button");
   resolve.className = "thread-resolve";
-  resolve.textContent = "Resolve";
+  resolve.textContent = last.author === "you" ? "Resolve" : "Accept & resolve";
   resolve.title = "Remove this comment, keep the text";
   resolve.addEventListener("click", () => {
     const view = host.view();
@@ -260,10 +301,15 @@ function onHover(event: MouseEvent): void {
     return;
   }
   showButton(view, block, dom.getBoundingClientRect().top, false);
+  // Sit beside the block's thread badge rather than on top of it.
+  if (dom.classList.contains("md-commented-first")) {
+    addButton.style.left = `${parseFloat(addButton.style.left) + 36}px`;
+  }
 }
 
 /** Selection changes: show the button for a selection, and mark the thread under the cursor. */
 function onEditorUpdate(view: EditorView): void {
+  renderBadges(view);
   if (selectedBlocks(view) && box.hidden) placeForSelection();
   else if (buttonFromSelection) hideButton();
   const active = new Set(commentsAt(view, view.state.selection.from));

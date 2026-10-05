@@ -13,13 +13,15 @@
       <div id="editor"></div>
       <aside id="comments" hidden>
         <header>
-          <span>Comments</span>
-          <button class="comments-copy" title="Save, then copy an instruction for Claude Code">Copy prompt for Claude</button>
+          <span>Threads</span>
+          <button class="comments-resolve-all" title="Remove every thread, keep the text">Resolve all</button>
+          <button class="comments-copy" title="Save, then copy an instruction for Claude Code">Copy prompt</button>
           <button class="comments-close" title="Hide (Ctrl+Shift+M)" aria-label="Hide comments">×</button>
         </header>
         <div class="comments-list"></div>
       </aside>
     </div>
+    <div id="comment-badges"></div>
     <button id="comment-add" hidden aria-label="Comment">💬</button>
     <div id="comment-box" hidden>
       <textarea rows="3" placeholder="Ask or challenge Claude about the selected blocks…"></textarea>
