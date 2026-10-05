@@ -46,36 +46,36 @@ body {
   --ink: #1f1f1d;
 }
 
-.md-comment-chip,
-.md-comment-end {
-  display: inline-block;
-  font-size: 0.8em;
-  line-height: 1.6;
-  border-radius: 4px;
-  padding: 0 0.5em;
-  cursor: pointer;
-  user-select: none;
-  max-width: 100%;
+/* Marker lines exist in the document but take no space. */
+.md-marker-line {
+  height: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: middle;
+  line-height: 0;
+  font-size: 0;
 }
 
-.md-comment-chip {
-  color: var(--comment);
+.md-comment-badge {
+  position: fixed;
+  z-index: 16;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
   border: 1px solid var(--comment);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  cursor: pointer;
 }
 
-.md-comment-chip.md-comment-replied {
+.md-comment-badge.replied {
   background: var(--comment);
-  color: #fff;
 }
 
-.md-comment-end {
-  color: var(--muted);
-  font-size: 0.7em;
-  cursor: default;
+.md-comment-badge.thinking {
+  opacity: 0.55;
 }
 
 .md-commented {
@@ -373,11 +373,11 @@ body {
   #about-button,
   #about,
   #comment-add,
+  #comment-badges,
   #comments,
   #comment-box,
   #status,
-  .md-comment-chip,
-  .md-comment-end {
+  .md-comment-badge {
     display: none !important;
   }
 

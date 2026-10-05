@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1
+
+- **No more visible comment tags.** The `💬 c1 · …` and `end c1` lines are gone from the
+  rendered view. A commented passage is just highlighted, with a 💬 badge in the right margin
+  (filled once Claude has replied); click it to open the thread.
+- **Resolving is one click.** Threads where Claude replied offer **Accept & resolve**, and the
+  panel has **Resolve all**. Resolving removes the markers, so the file is plain Markdown again.
+- **Fixed:** pressing Backspace or Delete right next to a thread could merge your text into the
+  hidden marker line, which hid that text inside an HTML comment. Marker lines now always stay
+  separate.
+
 ## 0.7.0
 
 - **A Claude thread on any passage.** Hover a paragraph, heading, list or table (or select

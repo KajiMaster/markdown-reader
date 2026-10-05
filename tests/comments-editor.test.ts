@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { normalizeForSave, toHtml } from "../src/md";
 import { listComments } from "../src/comments";
-import { addComment, answerThread, blockAt, commentsAt, replyToComment, resolveComment } from "../src/comments-editor";
+import { addComment, answerThread, blockAt, commentsAt, replyToComment, resolveAll, resolveComment } from "../src/comments-editor";
 import { makeEditor } from "./editor";
 
 const doc = "# Title\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n";
@@ -32,8 +32,11 @@ describe("comments in the editor", () => {
       "# Title\n\n<!-- @claude c1: merge these -->\n\nFirst paragraph.\n\nSecond paragraph.\n\n<!-- /@claude c1 -->\n\nThird paragraph.\n",
     );
     expect(ed.root.querySelectorAll(".md-commented")).toHaveLength(2);
-    expect(ed.root.querySelector(".md-comment-chip")?.textContent).toBe("💬 c1 · merge these");
-    expect(ed.root.textContent).not.toMatch(/<!--/);
+    expect(ed.root.querySelectorAll(".md-commented-first")).toHaveLength(1);
+    expect(ed.root.querySelector(".md-commented-first")?.getAttribute("data-comment-first")).toBe("c1");
+    // Markers are invisible: their lines are tagged for hiding and carry no text.
+    expect(ed.root.querySelectorAll(".md-marker-line")).toHaveLength(2);
+    expect(ed.root.textContent).not.toMatch(/<!--|merge these|c1/);
     // Other renderers show none of it.
     expect(toHtml(saved).replace(/<!--[\s\S]*?-->/g, "")).not.toMatch(/merge these/);
     await ed.destroy();
@@ -43,7 +46,6 @@ describe("comments in the editor", () => {
     const ed = await makeEditor(
       "<!-- @claude c1: shorter\nclaude: Which part? -->\n\nLong paragraph.\n\n<!-- /@claude c1 -->\n\nAfter.\n",
     );
-    expect(ed.root.querySelector(".md-comment-chip.md-comment-replied")).not.toBeNull();
     replyToComment(ed.view, "c1", "you", "the second sentence");
     expect(listComments(normalizeForSave(ed.markdown()))[0].messages).toEqual([
       { author: "you", text: "shorter" },
@@ -109,6 +111,35 @@ describe("comments in the editor", () => {
       return true;
     });
     expect(blockAt(ed.view, markerPos)).toBeNull();
+    await ed.destroy();
+  });
+
+  it("never lets an edit merge text into a hidden marker line", async () => {
+    const ed = await makeEditor("<!-- @claude c1: hm -->\n\nBody text.\n\n<!-- /@claude c1 -->\n\nAfter.\n");
+    // Backspace at the start of "Body text." joins it into the marker paragraph above.
+    let body = -1;
+    ed.view.state.doc.forEach((node, pos) => {
+      if (body === -1 && node.textContent.startsWith("Body")) body = pos;
+    });
+    ed.view.dispatch(ed.view.state.tr.join(body));
+    // And Delete at the end of "Body text." joins the end marker into it.
+    let end = -1;
+    ed.view.state.doc.forEach((node, pos) => {
+      if (node.textContent.startsWith("Body")) end = pos + node.nodeSize;
+    });
+    ed.view.dispatch(ed.view.state.tr.join(end));
+    expect(normalizeForSave(ed.markdown())).toBe(
+      "<!-- @claude c1: hm -->\n\nBody text.\n\n<!-- /@claude c1 -->\n\nAfter.\n",
+    );
+    await ed.destroy();
+  });
+
+  it("resolves every thread at once", async () => {
+    const ed = await makeEditor(
+      "<!-- @claude c1: a -->\n\nOne.\n\n<!-- /@claude c1 -->\n\nTwo.\n\n<!-- @claude c2: b -->\n\nThree.\n\n<!-- /@claude c2 -->\n",
+    );
+    resolveAll(ed.view);
+    expect(normalizeForSave(ed.markdown())).toBe("One.\n\nTwo.\n\nThree.\n");
     await ed.destroy();
   });
 });
